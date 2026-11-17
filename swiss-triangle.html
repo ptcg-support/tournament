@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Swiss Triangle Generator</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;800&display=swap">
+<style>
+:root{
+  --bg:#EEF2F1; --surface:#FFFFFF; --ink:#16282A; --muted:#5C7073; --line:#C8D4D2; --accent:#0E7C7B; --warn:#B3261E;
+  box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){--bg:#0F1B1C; --surface:#162628; --ink:#E6EFEE; --muted:#93A9AB; --line:#2C4245; --accent:#3CC4BE; --warn:#FF8A80;}
+}
+:root[data-theme="dark"]{--bg:#0F1B1C; --surface:#162628; --ink:#E6EFEE; --muted:#93A9AB; --line:#2C4245; --accent:#3CC4BE; --warn:#FF8A80;}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Manrope",system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.5;font-variant-numeric:tabular-nums}
+main{max-width:980px;margin:0 auto;padding:28px 18px 56px}
+h1{font-size:clamp(1.7rem,4vw,2.4rem);font-weight:800;letter-spacing:-.02em;margin:0 0 6px}
+p.lead{color:var(--muted);margin:0 0 24px;max-width:60ch}
+form{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px}
+label{display:flex;flex-direction:column;gap:4px;font-size:.88rem;font-weight:600}
+label small{font-weight:400;color:var(--muted)}
+input{width:130px;font:inherit;font-size:1.1rem;padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)}
+input:focus-visible,button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+button{font:inherit;font-weight:700;padding:10px 18px;border:0;border-radius:6px;background:var(--accent);color:#fff;cursor:pointer}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) button{color:#06201F}}
+#msg{min-height:1.5em;margin:12px 0 0;color:var(--warn);font-weight:600}
+#summary{margin:8px 0 18px;color:var(--muted)}
+#summary b{color:var(--ink)}
+.tri{padding:6px 0 14px;--cols:1}
+.row{display:flex;align-items:center;gap:8px;margin-bottom:5px}
+.rl{width:clamp(34px,8vw,70px);flex:none;font-size:clamp(.55rem,1.6vw,.85rem);font-weight:600;color:var(--muted);line-height:1.1}
+.cells{display:flex;gap:4px;flex:1;justify-content:center;min-width:0}
+.cell{flex:0 0 calc((100% - (var(--cols) - 1)*4px)/var(--cols));min-width:0;container-type:inline-size;padding:4px 1px;text-align:center;border:1px solid var(--line);border-radius:6px;background:color-mix(in srgb,var(--accent) calc(var(--k)*70%),var(--surface))}
+.cell .r{display:block;font-size:clamp(.4rem,17cqw,.72rem);color:var(--muted);white-space:nowrap}
+.cell .n{display:block;font-size:clamp(.5rem,30cqw,1.25rem);font-weight:800}
+.cell.zero{opacity:.38}
+.cell.zero .n{font-weight:400}
+.rows-wrap{width:100%}
+#notes{color:var(--muted);font-size:.9rem;margin-top:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Swiss triangle</h1>
+  <p class="lead">Enter the number of players and how many of them get a bye-win in round 1. The triangle shows how many players are expected at each record after every round.</p>
+  <form id="f">
+    <label>Players<input id="players" type="number" min="2" max="4096" value="45" inputmode="numeric"></label>
+    <label>Bye-wins<small>round 1</small><input id="byes" type="number" min="0" value="1" inputmode="numeric"></label>
+    <label>Rounds<small>blank = automatic</small><input id="rounds" type="number" min="1" max="12" placeholder="auto" inputmode="numeric"></label>
+    <button type="submit">Generate triangle</button>
+  </form>
+  <p id="msg" role="alert"></p>
+  <div id="summary"></div>
+  <div class="tri"><div class="rows-wrap" id="tri"></div></div>
+  <div id="notes"></div>
+</main>
+<script>
+(function(){
+  var $=function(id){return document.getElementById(id)};
+
+  function simulate(N,B,R){
+    var rows=[[N]], notes=[];
+    // Round 1: bye players win automatically, the rest split evenly
+    var half=(N-B)/2;
+    var c=[half,B+half];
+    rows.push(c);
+    for(var r=2;r<=R;r++){
+      var prev=rows[r-1], next=new Array(r+1).fill(0), floatFrom=-1;
+      for(var w=r-1;w>=0;w--){
+        var n=prev[w];
+        if(n===0)continue;
+        if(floatFrom>=0){ // upper floater beats one player of this group
+          next[floatFrom+1]++; next[w]++; n--; floatFrom=-1;
+        }
+        var pairs=Math.floor(n/2);
+        next[w+1]+=pairs; next[w]+=pairs;
+        if(n%2===1){
+          if(w===0){ next[1]++; notes.push("Round "+r+": one extra bye-win at 0-"+(r-1)+"."); }
+          else floatFrom=w;
+        }
+      }
+      if(floatFrom>=0){ next[floatFrom+1]++; notes.push("Round "+r+": one extra bye-win at "+floatFrom+"-"+(r-1-floatFrom)+"."); }
+      rows.push(next);
+    }
+    return {rows:rows,notes:notes};
+  }
+
+  function render(){
+    var N=parseInt($("players").value,10), B=parseInt($("byes").value,10), Rv=$("rounds").value;
+    var msg=$("msg"); msg.textContent="";
+    $("tri").innerHTML=""; $("summary").innerHTML=""; $("notes").textContent="";
+    if(!(N>=2&&N<=4096)){msg.textContent="Players must be between 2 and 4096.";return}
+    if(isNaN(B)||B<0||B>N){msg.textContent="Bye-wins must be between 0 and the number of players.";return}
+    if((N-B)%2!==0){msg.textContent="Players minus bye-wins must be even, so everyone else can be paired in round 1.";return}
+    var auto=Math.max(1,Math.ceil(Math.log2(N)));
+    var R=Rv?parseInt(Rv,10):auto;
+    if(!(R>=1&&R<=12)){msg.textContent="Rounds must be between 1 and 12.";return}
+
+    var sim=simulate(N,B,R), rows=sim.rows, max=1;
+    rows.forEach(function(row){row.forEach(function(v){if(v>max)max=v})});
+    var html="";
+    rows.forEach(function(row,r){
+      html+='<div class="row"><div class="rl">'+(r===0?"Start":"Round "+r)+'</div><div class="cells">';
+      for(var w=r;w>=0;w--){
+        var v=row[w], rec=w+"-"+(r-w);
+        html+='<div class="cell'+(v===0?" zero":"")+'" style="--k:'+(v/max).toFixed(3)+'"><span class="r">'+rec+'</span><span class="n">'+v+'</span></div>';
+      }
+      html+='</div></div>';
+    });
+    $("tri").style.setProperty("--cols",R+1);$("tri").innerHTML=html;
+    var last=rows[R];
+    $("summary").innerHTML="<b>"+N+"</b> players, <b>"+B+"</b> bye-win"+(B===1?"":"s")+" in round 1, <b>"+R+"</b> rounds"+(Rv?"":" (automatic)")+". Undefeated after round "+R+": <b>"+last[R]+"</b>.";
+    $("notes").textContent=sim.notes.join(" ")+(sim.notes.length?" ":"")+"Estimate assumes the higher-record player wins every pair-down.";
+  }
+
+  $("f").addEventListener("submit",function(e){e.preventDefault();render()});
+  ["players","byes","rounds"].forEach(function(id){$(id).addEventListener("input",render)});
+  render();
+})();
+</script>
+</body>
+</html>
