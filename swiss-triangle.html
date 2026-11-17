@@ -95,12 +95,13 @@ button{font:inherit;font-weight:700;padding:10px 18px;border:0;border-radius:6px
     $("tri").innerHTML=""; $("summary").innerHTML=""; $("notes").textContent="";
     if(!(N>=2&&N<=4096)){msg.textContent="Players must be between 2 and 4096.";return}
     if(isNaN(B)||B<0||B>N){msg.textContent="Bye-wins must be between 0 and the number of players.";return}
-    if((N-B)%2!==0){msg.textContent="Players minus bye-wins must be even, so everyone else can be paired in round 1.";return}
+    var extra=(N-B)%2, Be=B+extra;
     var auto=Math.max(1,Math.ceil(Math.log2(N)));
     var R=Rv?parseInt(Rv,10):auto;
     if(!(R>=1&&R<=12)){msg.textContent="Rounds must be between 1 and 12.";return}
 
-    var sim=simulate(N,B,R), rows=sim.rows, max=1;
+    var sim=simulate(N,Be,R), rows=sim.rows, max=1;
+    if(extra)sim.notes.unshift("Round 1: the odd player out gets a free bye-win.");
     rows.forEach(function(row){row.forEach(function(v){if(v>max)max=v})});
     var html="";
     rows.forEach(function(row,r){
@@ -113,7 +114,7 @@ button{font:inherit;font-weight:700;padding:10px 18px;border:0;border-radius:6px
     });
     $("tri").style.setProperty("--cols",R+1);$("tri").innerHTML=html;
     var last=rows[R];
-    $("summary").innerHTML="<b>"+N+"</b> players, <b>"+B+"</b> bye-win"+(B===1?"":"s")+" in round 1, <b>"+R+"</b> rounds"+(Rv?"":" (automatic)")+". Undefeated after round "+R+": <b>"+last[R]+"</b>.";
+    $("summary").innerHTML="<b>"+N+"</b> players, <b>"+Be+"</b> bye-win"+(Be===1?"":"s")+" in round 1, <b>"+R+"</b> rounds"+(Rv?"":" (automatic)")+". Undefeated after round "+R+": <b>"+last[R]+"</b>.";
     $("notes").textContent=sim.notes.join(" ")+(sim.notes.length?" ":"")+"Estimate assumes the higher-record player wins every pair-down.";
   }
 
